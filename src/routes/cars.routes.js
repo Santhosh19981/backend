@@ -9,7 +9,11 @@ router.get('/owner/my-cars', authenticate, requireRole('owner'), cars.getOwnerCa
 router.get('/:id', cars.getCarById);
 router.get('/:id/availability', cars.getAvailability);
 router.post('/', authenticate, requireRole('owner'),
-  upload.fields([{ name: 'images', maxCount: 10 }, { name: 'documents', maxCount: 5 }]),
+  upload.fields([
+    { name: 'images', maxCount: 10 }, 
+    { name: 'registration', maxCount: 5 }, 
+    { name: 'ownership', maxCount: 5 }
+  ]),
   cars.createCar
 );
 router.put('/:id/status', authenticate, requireRole('admin'), cars.updateCarStatus);

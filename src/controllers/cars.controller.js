@@ -26,7 +26,7 @@ exports.createCar = async (req, res) => {
 
     const carId = result.insertId;
 
-    // Upload images to S3
+    // Handle Uploaded Files
     if (req.files && req.files.images) {
       const imgs = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
       for (let i = 0; i < imgs.length; i++) {
@@ -36,13 +36,34 @@ exports.createCar = async (req, res) => {
       }
     }
 
-    // Upload documents
-    if (req.files && req.files.documents) {
-      const docs = Array.isArray(req.files.documents) ? req.files.documents : [req.files.documents];
+    // Handle Image URLs (Remote/Unsplash)
+    const { imageUrls } = req.body;
+    if (imageUrls && Array.isArray(imageUrls)) {
+      for (let i = 0; i < imageUrls.length; i++) {
+        // Only mark as primary if there were no uploaded files
+        const isPrimary = (!req.files || !req.files.images) && i === 0 ? 1 : 0;
+        await pool.query('INSERT INTO car_images (car_id, image_url, is_primary, sort_order) VALUES (?,?,?,?)',
+          [carId, imageUrls[i], isPrimary, i + (req.files?.images?.length || 0)]);
+      }
+    }
+
+    // Upload registration documents
+    if (req.files && req.files.registration) {
+      const docs = Array.isArray(req.files.registration) ? req.files.registration : [req.files.registration];
       for (const doc of docs) {
         const url = await uploadToS3(doc, `cars/${carId}/docs`);
         await pool.query('INSERT INTO car_documents (car_id, doc_type, doc_url) VALUES (?,?,?)',
-          [carId, doc.fieldname || 'registration', url]);
+          [carId, 'registration', url]);
+      }
+    }
+
+    // Upload ownership documents
+    if (req.files && req.files.ownership) {
+      const docs = Array.isArray(req.files.ownership) ? req.files.ownership : [req.files.ownership];
+      for (const doc of docs) {
+        const url = await uploadToS3(doc, `cars/${carId}/docs`);
+        await pool.query('INSERT INTO car_documents (car_id, doc_type, doc_url) VALUES (?,?,?)',
+          [carId, 'ownership', url]);
       }
     }
 
@@ -66,7 +87,7 @@ exports.createCar = async (req, res) => {
 // GET /api/cars — Public list approved cars
 exports.getCars = async (req, res) => {
   try {
-    const { location, min_price, max_price, fuel_type, transmission, sort, page = 1, limit = 12 } = req.query;
+    const { location, min_price, max_price, fuel_type, transmission, sort, page = 1, limit = 12, start_date, end_date } = req.query;
     let where = ['c.status = "approved"'];
     let params = [];
 
@@ -75,6 +96,16 @@ exports.getCars = async (req, res) => {
     if (max_price) { where.push('c.weekly_price <= ?'); params.push(max_price); }
     if (fuel_type) { where.push('c.fuel_type = ?'); params.push(fuel_type); }
     if (transmission) { where.push('c.transmission = ?'); params.push(transmission); }
+
+    // Availability filtering (No overlap in availability_blocks)
+    if (start_date && end_date) {
+      where.push(`NOT EXISTS (
+        SELECT 1 FROM availability_blocks ab 
+        WHERE ab.car_id = c.id 
+        AND NOT (ab.block_end <= ? OR ab.block_start >= ?)
+      )`);
+      params.push(start_date, end_date);
+    }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let orderBy = 'c.created_at DESC';
@@ -117,8 +148,9 @@ exports.getCarById = async (req, res) => {
       'SELECT r.*, u.name as customer_name, u.avatar_url FROM reviews r JOIN users u ON r.customer_id = u.id WHERE r.car_id = ? ORDER BY r.created_at DESC LIMIT 10',
       [id]
     );
+    const [documents] = await pool.query('SELECT doc_type as type, doc_url as url FROM car_documents WHERE car_id = ?', [id]);
 
-    res.json({ success: true, car: { ...cars[0], images, reviews } });
+    res.json({ success: true, car: { ...cars[0], images, reviews, documents } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -144,7 +176,8 @@ exports.getOwnerCars = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT c.*, 
        (SELECT image_url FROM car_images WHERE car_id = c.id AND is_primary = 1 LIMIT 1) as primary_image,
-       (SELECT COUNT(*) FROM bookings WHERE car_id = c.id AND status NOT IN ('cancelled')) as booking_count
+       (SELECT COUNT(*) FROM bookings WHERE car_id = c.id AND status NOT IN ('cancelled')) as booking_count,
+       (SELECT SUM(owner_amount) FROM bookings WHERE car_id = c.id AND status IN ('completed', 'active')) as total_earnings
        FROM cars c WHERE c.owner_id = ? ORDER BY c.created_at DESC`,
       [req.user.id]
     );

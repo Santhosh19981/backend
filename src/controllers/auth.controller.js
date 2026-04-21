@@ -140,3 +140,18 @@ exports.updateFcmToken = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// PUT /api/auth/profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone, avatar_url } = req.body;
+    await pool.query(
+      'UPDATE users SET name = ?, phone = ?, avatar_url = ? WHERE id = ?',
+      [name, phone || null, avatar_url || null, req.user.id]
+    );
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

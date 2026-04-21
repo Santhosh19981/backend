@@ -9,5 +9,6 @@ router.post('/verify-otp', auth.verifyOTP);
 router.post('/resend-otp', auth.resendOTP);
 router.get('/me', authenticate, auth.getMe);
 router.put('/fcm-token', authenticate, auth.updateFcmToken);
+router.put('/profile', authenticate, auth.updateProfile);
 
 module.exports = router;

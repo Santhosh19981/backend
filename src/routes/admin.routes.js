@@ -11,5 +11,6 @@ router.get('/users', ...isAdmin, admin.getUsers);
 router.get('/bookings', ...isAdmin, admin.getAllBookings);
 router.get('/commission', ...isAdmin, admin.getCommission);
 router.put('/commission', ...isAdmin, admin.updateCommission);
+router.get('/reports', ...isAdmin, admin.getReports);
 
 module.exports = router;
