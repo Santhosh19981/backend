@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const path = require('path');
 
 const s3 = new AWS.S3({
@@ -10,7 +10,7 @@ const s3 = new AWS.S3({
 
 exports.uploadToS3 = async (file, folder = 'uploads') => {
   const ext = path.extname(file.originalname);
-  const key = `${folder}/${uuidv4()}${ext}`;
+  const key = `${folder}/${crypto.randomUUID()}${ext}`;
 
   const params = {
     Bucket: process.env.AWS_S3_BUCKET,

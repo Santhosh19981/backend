@@ -16,6 +16,8 @@ const pool = mysql.createPool({
   timezone: '+10:00',
 });
 
+// Remove top-level connection check for serverless compatibility
+/*
 pool.getConnection()
   .then(conn => {
     console.log('✅ MySQL Connected:', process.env.DB_HOST);
@@ -27,5 +29,6 @@ pool.getConnection()
       console.warn('💡 Tip: Your database "carmate_db" does not exist. Run "node setup-db.js" to create it.');
     }
   });
+*/
 
 module.exports = pool;
