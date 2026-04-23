@@ -41,7 +41,11 @@ exports.register = async (req, res) => {
       html: `<h2>Welcome to CarMate 🚗</h2><p>Your verification OTP is: <strong>${otp}</strong></p><p>Valid for 10 minutes.</p>`
     });
 
-    const token = jwt.sign({ id: result.insertId, role: userRole }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    const token = jwt.sign(
+      { id: result.insertId, role: userRole }, 
+      process.env.JWT_SECRET || 'carmate_secret', 
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 
     res.status(201).json({
       success: true,
@@ -51,7 +55,7 @@ exports.register = async (req, res) => {
     });
   } catch (err) {
     console.error('Register error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
   }
 };
 
@@ -84,7 +88,11 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    const token = jwt.sign(
+      { id: user.id, role: user.role }, 
+      process.env.JWT_SECRET || 'carmate_secret', 
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 
     res.json({
       success: true,
@@ -99,7 +107,8 @@ exports.login = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
   }
 };
 

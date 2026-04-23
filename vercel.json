@@ -13,6 +13,8 @@
     "DB_USER": "3F8F5nJ9TbykpAp.root",
     "DB_PASSWORD": "lCw7fQIEEK4TpKDF",
     "DB_NAME": "carmate_db",
-    "JWT_SECRET": "carmate_super_secret_jwt_key_2026"
+    "JWT_SECRET": "carmate_super_secret_jwt_key_2026",
+    "JWT_EXPIRES_IN": "7d",
+    "PLATFORM_COMMISSION_PERCENT": "15"
   }
 }
